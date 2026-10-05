@@ -14,19 +14,20 @@ export class Prompt {
 
   constructor(scene: Phaser.Scene) {
     this.panel = woodPanel(scene, "ui-tag", 0, 0, 120, H);
-    this.key = scene.add.image(14, H / 2, "ui-key-e").setOrigin(0, 0.5).setScale(GAME.zoom);
+    this.key = scene.add.image(14, H / 2, "ui-key-e").setOrigin(0, 0.5).setScale(GAME.uiPx);
     this.label = scene.add.text(62, H / 2 + 1, "", textStyle(22)).setOrigin(0, 0.5);
     this.root = scene.add.container(0, 0, [this.panel, this.key, this.label]).setDepth(90).setVisible(false);
   }
 
-  show(text: string, screenX: number, screenY: number): void {
+  /** Posição e limites em coordenadas da UI (`viewW`/`viewH` = área visível). */
+  show(text: string, screenX: number, screenY: number, viewW: number, viewH: number): void {
     if (this.label.text !== text) {
       this.label.setText(text);
       this.width = this.label.x + this.label.width + 20;
       resizePanel(this.panel, this.width, H);
     }
-    const x = Phaser.Math.Clamp(screenX - this.width / 2, 8, GAME.width - this.width - 8);
-    const y = Phaser.Math.Clamp(screenY - H - 6, 8, GAME.height - H - 8);
+    const x = Phaser.Math.Clamp(screenX - this.width / 2, 8, viewW - this.width - 8);
+    const y = Phaser.Math.Clamp(screenY - H - 6, 8, viewH - H - 8);
     this.root.setPosition(Math.round(x), Math.round(y)).setVisible(true);
   }
 
@@ -34,4 +35,3 @@ export class Prompt {
     this.root.setVisible(false);
   }
 }
-

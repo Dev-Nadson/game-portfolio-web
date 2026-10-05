@@ -62,6 +62,8 @@ const CATSUC = room({
   floor: "floor-wood",
   wall: "office",
   props: [
+    // logo da empresa no alto da parede, acima das placas
+    at("f-catsuc-logo", 8, 2, { body: false }),
     // Suporte (colunas 1–8)
     onWall("f-plaque-suporte", 5, { content: catsuc.SUPPORT_PLAQUE }),
     at("f-terminal", 3, 5, { content: catsuc.CLI_TERMINAL }),

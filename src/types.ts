@@ -79,6 +79,8 @@ export interface MapDef {
   /** segunda camada de tiles (cercas etc.), -1 = vazio */
   overlay: number[][];
   collision: boolean[][];
+  /** pares de tiles trocados em loop no chão (animação do mar) */
+  tileAnims?: [number, number][];
   props: PropDef[];
   doors: DoorDef[];
   exits: ExitDef[];

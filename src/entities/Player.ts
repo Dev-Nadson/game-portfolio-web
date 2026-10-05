@@ -1,10 +1,13 @@
 import Phaser from "phaser";
 import { GAME } from "../config";
 import type { Facing } from "../types";
+import { PLAYER_ROWS, WALK_FPS, idleFrame, walkFrames } from "./player-sheet";
 
-const DIRS: Facing[] = ["down", "left", "right", "up"];
-/** frame "parado" de cada direção na spritesheet (coluna 1) */
-const IDLE_FRAME: Record<Facing, number> = { down: 1, left: 5, right: 9, up: 13 };
+/** frame "parado" de cada direção na spritesheet */
+const IDLE_FRAME = Object.fromEntries(PLAYER_ROWS.map((dir, row) => [dir, idleFrame(row)])) as Record<
+  Facing,
+  number
+>;
 
 const FACING_VEC: Record<Facing, { x: number; y: number }> = {
   down: { x: 0, y: 1 },
@@ -20,13 +23,13 @@ export interface MoveInput {
 }
 
 export function createPlayerAnims(scene: Phaser.Scene): void {
-  DIRS.forEach((dir, row) => {
+  PLAYER_ROWS.forEach((dir, row) => {
     const key = `walk-${dir}`;
     if (scene.anims.exists(key)) return;
     scene.anims.create({
       key,
-      frames: scene.anims.generateFrameNumbers("player", { start: row * 4, end: row * 4 + 3 }),
-      frameRate: 8,
+      frames: walkFrames(row).map((frame) => ({ key: "player", frame })),
+      frameRate: WALK_FPS,
       repeat: -1,
     });
   });

@@ -19,13 +19,12 @@ async function start(): Promise<void> {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game",
-    width: GAME.width,
-    height: GAME.height,
     backgroundColor: GAME.background,
     pixelArt: true,
     roundPixels: true,
     physics: { default: "arcade", arcade: { debug } },
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    // o canvas ocupa a janela inteira; o zoom de cada cena é recalculado no resize
+    scale: { mode: Phaser.Scale.RESIZE },
     // a ordem define a pintura: UI por último, por cima de tudo
     scene: [BootScene, TitleScene, VillageScene, InteriorScene, UIScene],
   });

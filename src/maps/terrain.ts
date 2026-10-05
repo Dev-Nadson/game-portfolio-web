@@ -1,4 +1,4 @@
-import { KENNEY, customTile, type CustomTile } from "./tileset";
+import { EDGE_PARTS, KENNEY, customTile, type CustomTile, type EdgedTile } from "./tileset";
 
 /**
  * Grade de terreno "semântica" (grama, caminho, água...) que vira tiles
@@ -11,6 +11,10 @@ export type Terrain =
   | "plaza"
   | "water"
   | "soil"
+  | "sand"
+  | "sea"
+  | "rock"
+  | "pier"
   | "void"
   | "wall"
   | "exit"
@@ -20,7 +24,17 @@ export type Terrain =
 
 export type WallStyle = "office" | "clinic" | "school";
 
-const SOLID: ReadonlySet<Terrain> = new Set(["water", "void", "wall"]);
+const SOLID: ReadonlySet<Terrain> = new Set(["water", "sea", "rock", "void", "wall"]);
+
+/**
+ * Quais vizinhos contam como "o mesmo terreno" no autotile. A cor da
+ * margem fica gravada no tile, então a areia não desenha borda de grama
+ * onde encosta no mar, e o mar trata o píer como água.
+ */
+const SAME_AS: Partial<Record<Terrain, ReadonlySet<Terrain>>> = {
+  sand: new Set(["sand", "sea", "pier"]),
+  sea: new Set(["sea", "pier"]),
+};
 
 export class TerrainGrid {
   readonly cells: Terrain[][];
@@ -59,9 +73,12 @@ export class TerrainGrid {
   }
 }
 
-/** Hash determinístico por célula — variação de grama sem Math.random. */
-function hash(x: number, y: number): number {
-  let h = Math.imul(x, 374761393) + Math.imul(y, 668265263);
+/**
+ * Hash determinístico por célula (0..1) — variação sem Math.random. O
+ * `salt` dá sequências independentes para a mesma célula.
+ */
+export function hash(x: number, y: number, salt = 0): number {
+  let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(salt, 1442695041);
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 0xffffffff;
 }
@@ -91,21 +108,23 @@ const PATH_EDGES: EdgeSet = {
 };
 
 const w = (name: CustomTile) => customTile(name);
-const WATER_EDGES: EdgeSet = {
-  tl: w("water_tl"),
-  t: w("water_t"),
-  tr: w("water_tr"),
-  l: w("water_l"),
-  c: w("water_c"),
-  r: w("water_r"),
-  bl: w("water_bl"),
-  b: w("water_b"),
-  br: w("water_br"),
-  inTl: w("water_in_tl"),
-  inTr: w("water_in_tr"),
-  inBl: w("water_in_bl"),
-  inBr: w("water_in_br"),
-};
+
+/** As peças de um terreno desenhado pelo gerador (ver EDGED em tileset.ts). */
+function edgeSet(kind: EdgedTile): EdgeSet {
+  const [tl, t, tr, l, c, r, bl, b, br, inTl, inTr, inBl, inBr] = EDGE_PARTS.map((p) => w(`${kind}_${p}`));
+  return { tl, t, tr, l, c, r, bl, b, br, inTl, inTr, inBl, inBr };
+}
+
+const WATER_EDGES = edgeSet("water");
+const SAND_EDGES = edgeSet("sand");
+const SEA_EDGES = edgeSet("sea");
+const ROCK_EDGES = edgeSet("rock");
+
+/**
+ * Pares de tiles que o render troca em loop para animar o mar: cada peça
+ * do quadro A com a mesma peça do quadro B.
+ */
+export const SEA_ANIM: [number, number][] = EDGE_PARTS.map((p) => [w(`sea_${p}`), w(`sea2_${p}`)]);
 
 /** Autotile de 9 partes + cantos internos. Regiões precisam ter ≥ 2 tiles de largura. */
 function autotile(same: (dx: number, dy: number) => boolean, e: EdgeSet): number {
@@ -155,12 +174,14 @@ export interface BakedTerrain {
   ground: number[][];
   overlay: number[][];
   collision: boolean[][];
+  tileAnims: [number, number][];
 }
 
 export function bake(grid: TerrainGrid, wallStyle: WallStyle = "office"): BakedTerrain {
   const ground: number[][] = [];
   const overlay: number[][] = [];
   const collision: boolean[][] = [];
+  let hasSea = false;
 
   for (let y = 0; y < grid.height; y++) {
     ground.push([]);
@@ -168,8 +189,12 @@ export function bake(grid: TerrainGrid, wallStyle: WallStyle = "office"): BakedT
     collision.push([]);
     for (let x = 0; x < grid.width; x++) {
       const t = grid.cells[y][x];
+      const group = SAME_AS[t];
       // fora do mapa conta como "igual" para não desenhar margem na borda
-      const same = (dx: number, dy: number) => (grid.get(x + dx, y + dy) ?? t) === t;
+      const same = (dx: number, dy: number) => {
+        const n = grid.get(x + dx, y + dy) ?? t;
+        return group ? group.has(n) : n === t;
+      };
       let tile: number;
       switch (t) {
         case "grass": {
@@ -182,6 +207,19 @@ export function bake(grid: TerrainGrid, wallStyle: WallStyle = "office"): BakedT
           break;
         case "water":
           tile = autotile(same, WATER_EDGES);
+          break;
+        case "sand":
+          tile = autotile(same, SAND_EDGES);
+          break;
+        case "sea":
+          tile = autotile(same, SEA_EDGES);
+          hasSea = true;
+          break;
+        case "rock":
+          tile = autotile(same, ROCK_EDGES);
+          break;
+        case "pier":
+          tile = w(grid.get(x, y + 1) === "pier" ? "pier" : "pier_end");
           break;
         case "plaza":
           tile = KENNEY.plaza;
@@ -213,5 +251,5 @@ export function bake(grid: TerrainGrid, wallStyle: WallStyle = "office"): BakedT
       collision[y].push(SOLID.has(t) || grid.fences[y][x]);
     }
   }
-  return { ground, overlay, collision };
+  return { ground, overlay, collision, tileAnims: hasSea ? SEA_ANIM : [] };
 }

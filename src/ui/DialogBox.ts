@@ -3,7 +3,7 @@ import { COLORS, GAME } from "../config";
 import type { Content, DialogLink } from "../types";
 import { resizePanel, textStyle, woodPanel } from "./text";
 
-const BOX = { w: 1040, h: 240, bottom: 24 };
+const BOX = { w: 1040, h: 240, bottom: 24 } as const;
 const PAD = { x: 38, y: 30 };
 
 /**
@@ -13,12 +13,14 @@ const PAD = { x: 38, y: 30 };
  */
 export class DialogBox {
   private readonly root: Phaser.GameObjects.Container;
+  private readonly box: Phaser.GameObjects.NineSlice;
   private readonly tag: Phaser.GameObjects.NineSlice;
   private readonly title: Phaser.GameObjects.Text;
   private readonly body: Phaser.GameObjects.Text;
   private readonly pageLabel: Phaser.GameObjects.Text;
   private readonly arrow: Phaser.GameObjects.Image;
   private links: Phaser.GameObjects.Text[] = [];
+  private boxW: number = BOX.w;
 
   private content: Content | null = null;
   private page = 0;
@@ -26,32 +28,45 @@ export class DialogBox {
   private shown = 0;
   private onClose: (() => void) | null = null;
 
+  /** Os filhos usam coordenadas locais do `root`; `layout` posiciona o todo. */
   constructor(private readonly scene: Phaser.Scene) {
-    const x = (GAME.width - BOX.w) / 2;
-    const y = GAME.height - BOX.h - BOX.bottom;
-
-    const box = woodPanel(scene, "ui-dialog", x, y, BOX.w, BOX.h);
-    this.tag = woodPanel(scene, "ui-tag", x + 20, y - 44, 200, 54);
-    this.title = scene.add.text(x + 42, y - 32, "", textStyle(26, { color: COLORS.ink }));
+    this.box = woodPanel(scene, "ui-dialog", 0, 0, BOX.w, BOX.h);
+    this.tag = woodPanel(scene, "ui-tag", 20, -44, 200, 54);
+    this.title = scene.add.text(42, -32, "", textStyle(26, { color: COLORS.ink }));
     this.body = scene.add.text(
-      x + PAD.x,
-      y + PAD.y,
+      PAD.x,
+      PAD.y,
       "",
       textStyle(27, { wordWrap: { width: BOX.w - PAD.x * 2 }, lineSpacing: 8 })
     );
-    this.pageLabel = scene.add
-      .text(x + BOX.w - 40, y + BOX.h - 26, "", textStyle(18, { color: COLORS.inkSoft }))
-      .setOrigin(1, 1);
+    this.pageLabel = scene.add.text(0, BOX.h - 26, "", textStyle(18, { color: COLORS.inkSoft })).setOrigin(1, 1);
     this.arrow = scene.add
-      .image(x + BOX.w - 50, y + BOX.h - 58, "ui-arrow")
-      .setScale(GAME.zoom)
+      .image(0, BOX.h - 58, "ui-arrow")
+      .setScale(GAME.uiPx)
       .setOrigin(0.5);
     scene.tweens.add({ targets: this.arrow, y: this.arrow.y + 8, duration: 380, yoyo: true, repeat: -1 });
 
     this.root = scene.add
-      .container(0, 0, [box, this.tag, this.title, this.body, this.pageLabel, this.arrow])
+      .container(0, 0, [this.box, this.tag, this.title, this.body, this.pageLabel, this.arrow])
       .setDepth(100)
       .setVisible(false);
+  }
+
+  /** Centraliza embaixo e ajusta a largura à tela (em coordenadas da UI). */
+  layout(viewW: number, viewH: number): void {
+    this.boxW = Math.min(BOX.w, viewW - 32);
+    this.root.setPosition(Math.round((viewW - this.boxW) / 2), viewH - BOX.h - BOX.bottom);
+    resizePanel(this.box, this.boxW, BOX.h);
+    this.pageLabel.setX(this.boxW - 40);
+    this.arrow.setX(this.boxW - 50);
+    this.body.setWordWrapWidth(this.boxW - PAD.x * 2);
+    if (!this.content) return;
+    // refaz a quebra de linha da página aberta sem recomeçar a digitação
+    const shown = this.shown;
+    this.wrapPage();
+    this.shown = Math.min(shown, this.full.length);
+    this.clearLinks();
+    this.render();
   }
 
   isOpen(): boolean {
@@ -110,12 +125,17 @@ export class DialogBox {
     if (!this.content) return;
     this.page = i;
     this.clearLinks();
-    // quebra as linhas já com o texto inteiro, para nada "pular" enquanto digita
-    this.full = this.body.getWrappedText(this.content.pages[i].text).join("\n");
+    this.wrapPage();
     this.shown = 0;
     const total = this.content.pages.length;
     this.pageLabel.setText(total > 1 ? `${i + 1}/${total}` : "");
     this.render();
+  }
+
+  /** Quebra as linhas já com o texto inteiro, para nada "pular" enquanto digita. */
+  private wrapPage(): void {
+    const text = this.content?.pages[this.page]?.text ?? "";
+    this.full = this.body.getWrappedText(text).join("\n");
   }
 
   private render(): void {

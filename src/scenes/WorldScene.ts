@@ -4,6 +4,7 @@ import type { DoorDef, ExitDef, MapDef } from "../types";
 import { Player, type MoveInput } from "../entities/Player";
 import { findTarget, type Interactable } from "../systems/interaction";
 import { renderMap } from "../systems/map-render";
+import { fitCamera, onResize } from "../systems/camera";
 import { progress } from "../systems/progress";
 import { fadeIn } from "../systems/transition";
 import type { UIScene } from "./UIScene";
@@ -51,15 +52,11 @@ export abstract class WorldScene extends Phaser.Scene {
     this.physics.add.collider(this.player, world.solids);
 
     const cam = this.cameras.main;
-    cam.setZoom(GAME.zoom).setRoundPixels(true).setBackgroundColor(GAME.background);
-    const viewW = GAME.width / GAME.zoom;
-    const viewH = GAME.height / GAME.zoom;
-    if (world.widthPx <= viewW && world.heightPx <= viewH) {
-      cam.centerOn(world.widthPx / 2, world.heightPx / 2);
-    } else {
-      cam.setBounds(0, 0, world.widthPx, world.heightPx);
-      cam.startFollow(this.player, true, 0.15, 0.15);
-    }
+    cam.setRoundPixels(true).setBackgroundColor(GAME.background);
+    fitCamera(cam, world.widthPx, world.heightPx);
+    // segue sempre; em salas menores que a tela os limites já travam no centro
+    cam.startFollow(this.player, true, 0.15, 0.15);
+    onResize(this, () => fitCamera(cam, world.widthPx, world.heightPx));
 
     this.keys = this.input.keyboard!.addKeys(
       "W,A,S,D,UP,DOWN,LEFT,RIGHT,SHIFT,E,SPACE,ENTER"
@@ -83,9 +80,11 @@ export abstract class WorldScene extends Phaser.Scene {
     this.target = findTarget(this.items, this.player.probe(), GAME.interactRange);
     if (this.target) {
       const { sprite } = this.target;
-      const top = this.cameras.main.getWorldPoint(0, 0);
-      const sx = (sprite.x - top.x) * GAME.zoom;
-      const sy = (sprite.y - sprite.height - top.y) * GAME.zoom;
+      const cam = this.cameras.main;
+      const top = cam.getWorldPoint(0, 0);
+      // props altos (farol, torres): o prompt fica perto da base, não no topo
+      const sx = (sprite.x - top.x) * cam.zoom;
+      const sy = (sprite.y - Math.min(sprite.height, 40) - top.y) * cam.zoom;
       this.ui.showPrompt(this.target.content.title, sx, sy);
     } else {
       this.ui.hidePrompt();

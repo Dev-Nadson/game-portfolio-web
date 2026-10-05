@@ -13,6 +13,8 @@ export interface RenderedMap {
 }
 
 const DEPTH = { ground: -30, overlay: -20, floorProps: -10, sparkle: 100000 };
+/** intervalo entre os quadros da animação de tiles (mar) */
+const TILE_ANIM_MS = 650;
 
 /**
  * Monta um MapDef na cena: camadas de tiles, props com ordenação por Y,
@@ -24,7 +26,16 @@ export function renderMap(scene: Phaser.Scene, def: MapDef): RenderedMap {
   const map = scene.make.tilemap({ tileWidth: T, tileHeight: T, width: def.width, height: def.height });
   const tiles = map.addTilesetImage("world", "world", T, T, 0, 0)!;
 
-  map.createBlankLayer("ground", tiles)!.putTilesAt(def.ground, 0, 0).setDepth(DEPTH.ground);
+  const ground = map.createBlankLayer("ground", tiles)!.putTilesAt(def.ground, 0, 0).setDepth(DEPTH.ground);
+  const anims = def.tileAnims ?? [];
+  if (anims.length > 0) {
+    // o evento morre junto com a cena
+    scene.time.addEvent({
+      delay: TILE_ANIM_MS,
+      loop: true,
+      callback: () => anims.forEach(([a, b]) => ground.swapByIndex(a, b)),
+    });
+  }
   const overlay = map.createBlankLayer("overlay", tiles)!.setDepth(DEPTH.overlay);
   def.overlay.forEach((row, y) => row.forEach((t, x) => t >= 0 && overlay.putTileAt(t, x, y)));
 

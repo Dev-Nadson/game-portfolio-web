@@ -35,11 +35,28 @@ export const C = {
   paper: "#fff1d6",
   skinLight: "#fcbc8f",
 
+  sand: "#f4d58d",
+  sandDark: "#dcb36b",
+  sandLight: "#fcecbc",
+
+  rock: "#8e8a9b",
+  rockDark: "#6a6578",
+  rockLight: "#b3aec0",
+  rockFace: "#5c566a",
+  snow: "#f2f7ff",
+  snowShade: "#c6d3ea",
+
+  catsuc: "#2749f2",
+  catsucDark: "#1b33a8",
+  catsucLight: "#5a74ff",
+
   blue: "#009adc",
   sky: "#76e4ff",
   water: "#3d8fd1",
   waterDark: "#2f6fb0",
   waterLight: "#76c8f0",
+  sea: "#3a86cf",
+  foam: "#f4fbff",
 
   purple: "#8f5bc9",
   purpleLight: "#c496f0",

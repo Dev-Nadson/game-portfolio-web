@@ -12,7 +12,7 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     const label = this.add
-      .text(GAME.width / 2, GAME.height / 2, "Carregando...", textStyle(32, { color: COLORS.paper }))
+      .text(this.scale.width / 2, this.scale.height / 2, "Carregando...", textStyle(32, { color: COLORS.paper }))
       .setOrigin(0.5);
     this.load.on("progress", (p: number) => label.setText(`Carregando... ${Math.round(p * 100)}%`));
 

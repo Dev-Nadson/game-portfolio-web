@@ -5,26 +5,23 @@
  * copiados sem alteração. Depois vêm os tiles próprios, na ordem de
  * CUSTOM_TILES — o gerador de sprites usa essa mesma lista, então para
  * criar um tile novo basta adicionar o nome aqui e desenhá-lo em
- * scripts/sprites/tiles.ts.
+ * scripts/sprites/tiles.ts (o TypeScript acusa o que faltar).
  */
 export const TILESET_COLUMNS = 12;
 export const KENNEY_TILE_COUNT = 132;
 
-export const CUSTOM_TILES = [
-  // água: 9 partes + 4 cantos internos (mesmo esquema do caminho de terra)
-  "water_tl",
-  "water_t",
-  "water_tr",
-  "water_l",
-  "water_c",
-  "water_r",
-  "water_bl",
-  "water_b",
-  "water_br",
-  "water_in_tl",
-  "water_in_tr",
-  "water_in_bl",
-  "water_in_br",
+/** As 9 partes + 4 cantos internos de um terreno com borda (autotile). */
+export const EDGE_PARTS = ["tl", "t", "tr", "l", "c", "r", "bl", "b", "br", "in_tl", "in_tr", "in_bl", "in_br"] as const;
+export type EdgePart = (typeof EDGE_PARTS)[number];
+
+/**
+ * Terrenos desenhados com borda pelo gerador. `sea2` é o segundo quadro
+ * da animação do mar (a espuma avança sobre a areia).
+ */
+export const EDGED = ["water", "sand", "sea", "sea2", "rock"] as const;
+export type EdgedTile = (typeof EDGED)[number];
+
+const OTHER_TILES = [
   "soil",
   "floor_wood_a",
   "floor_wood_b",
@@ -40,9 +37,16 @@ export const CUSTOM_TILES = [
   "wall_school_bottom",
   "void",
   "exit_mat",
+  "pier",
+  "pier_end",
 ] as const;
 
-export type CustomTile = (typeof CUSTOM_TILES)[number];
+export type CustomTile = `${EdgedTile}_${EdgePart}` | (typeof OTHER_TILES)[number];
+
+export const CUSTOM_TILES: readonly CustomTile[] = [
+  ...EDGED.flatMap((kind) => EDGE_PARTS.map((part) => `${kind}_${part}` as const)),
+  ...OTHER_TILES,
+];
 
 export function customTile(name: CustomTile): number {
   return KENNEY_TILE_COUNT + CUSTOM_TILES.indexOf(name);

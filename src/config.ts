@@ -3,10 +3,14 @@
  * Centralizar aqui evita "números mágicos" espalhados pelo código.
  */
 export const GAME = {
-  width: 1280,
-  height: 720,
-  /** zoom da câmera do mundo: 1 pixel da arte = 3 pixels na tela */
-  zoom: 3,
+  /**
+   * Área de mundo (px da arte) que a câmera tenta mostrar. O canvas ocupa
+   * a janela inteira e o zoom é o inteiro que mais se aproxima disso
+   * (ver src/systems/camera.ts) — pixels sempre do mesmo tamanho.
+   */
+  view: { w: 480, h: 270 },
+  /** tamanho de 1 pixel da arte nas molduras e ícones da interface */
+  uiPx: 3,
   tile: 16,
   playerSpeed: 78, // pixels do mundo por segundo
   runMultiplier: 1.7,

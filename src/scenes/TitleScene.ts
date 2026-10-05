@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 import { GAME } from "../config";
-import { VILLAGE } from "../maps/village";
+import { TITLE_TOUR, VILLAGE } from "../maps/village";
 import { renderMap } from "../systems/map-render";
+import { fitCamera, onResize } from "../systems/camera";
 import { fadeIn, goTo } from "../systems/transition";
 import type { UIScene } from "./UIScene";
 
@@ -20,16 +21,13 @@ export class TitleScene extends Phaser.Scene {
     this.starting = false;
     const world = renderMap(this, VILLAGE);
     const cam = this.cameras.main;
-    cam.setZoom(GAME.zoom).setRoundPixels(true).setBounds(0, 0, world.widthPx, world.heightPx);
-    cam.centerOn(world.widthPx * 0.2, world.heightPx * 0.3);
+    cam.setRoundPixels(true);
+    fitCamera(cam, world.widthPx, world.heightPx);
+    onResize(this, () => fitCamera(cam, world.widthPx, world.heightPx));
 
-    // passeio lento entre os pontos da vila
-    const stops = [
-      [0.2, 0.3],
-      [0.8, 0.3],
-      [0.78, 0.72],
-      [0.25, 0.75],
-    ].map(([x, y]) => ({ x: world.widthPx * x, y: world.heightPx * y }));
+    // passeio lento entre os pontos da vila (paradas em tiles)
+    const stops = TITLE_TOUR.map(([x, y]) => ({ x: x * GAME.tile, y: y * GAME.tile }));
+    cam.centerOn(stops[0].x, stops[0].y);
     const target = { x: stops[0].x, y: stops[0].y };
     this.tweens.chain({
       targets: target,

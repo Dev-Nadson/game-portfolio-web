@@ -21,8 +21,116 @@ export const SPRITES = [
     "file": "assets/sprites/tree-oak-autumn.png"
   },
   {
+    "key": "tree-apple",
+    "file": "assets/sprites/tree-apple.png"
+  },
+  {
+    "key": "tree-orange",
+    "file": "assets/sprites/tree-orange.png"
+  },
+  {
+    "key": "tree-cherry",
+    "file": "assets/sprites/tree-cherry.png"
+  },
+  {
+    "key": "tree-birch",
+    "file": "assets/sprites/tree-birch.png"
+  },
+  {
+    "key": "tree-oak-old",
+    "file": "assets/sprites/tree-oak-old.png"
+  },
+  {
     "key": "tree-pine",
     "file": "assets/sprites/tree-pine.png"
+  },
+  {
+    "key": "tree-pine-dark",
+    "file": "assets/sprites/tree-pine-dark.png"
+  },
+  {
+    "key": "tree-palm",
+    "file": "assets/sprites/tree-palm.png"
+  },
+  {
+    "key": "stump",
+    "file": "assets/sprites/stump.png"
+  },
+  {
+    "key": "log-fallen",
+    "file": "assets/sprites/log-fallen.png"
+  },
+  {
+    "key": "mountain-big",
+    "file": "assets/sprites/mountain-big.png"
+  },
+  {
+    "key": "mountain-big-b",
+    "file": "assets/sprites/mountain-big-b.png"
+  },
+  {
+    "key": "mountain-mid",
+    "file": "assets/sprites/mountain-mid.png"
+  },
+  {
+    "key": "mountain-mid-b",
+    "file": "assets/sprites/mountain-mid-b.png"
+  },
+  {
+    "key": "mountain-low",
+    "file": "assets/sprites/mountain-low.png"
+  },
+  {
+    "key": "mountain-low-b",
+    "file": "assets/sprites/mountain-low-b.png"
+  },
+  {
+    "key": "boulder",
+    "file": "assets/sprites/boulder.png"
+  },
+  {
+    "key": "rock-small",
+    "file": "assets/sprites/rock-small.png"
+  },
+  {
+    "key": "waterfall",
+    "file": "assets/sprites/waterfall.png",
+    "frameWidth": 32,
+    "frameHeight": 48
+  },
+  {
+    "key": "cave-entrance",
+    "file": "assets/sprites/cave-entrance.png"
+  },
+  {
+    "key": "lighthouse",
+    "file": "assets/sprites/lighthouse.png",
+    "frameWidth": 32,
+    "frameHeight": 80
+  },
+  {
+    "key": "boat",
+    "file": "assets/sprites/boat.png"
+  },
+  {
+    "key": "beach-umbrella",
+    "file": "assets/sprites/beach-umbrella.png"
+  },
+  {
+    "key": "beach-towel",
+    "file": "assets/sprites/beach-towel.png"
+  },
+  {
+    "key": "shells",
+    "file": "assets/sprites/shells.png"
+  },
+  {
+    "key": "starfish",
+    "file": "assets/sprites/starfish.png"
+  },
+  {
+    "key": "sandcastle",
+    "file": "assets/sprites/sandcastle.png"
   },
   {
     "key": "building-catsuc",
@@ -35,6 +143,22 @@ export const SPRITES = [
   {
     "key": "building-school",
     "file": "assets/sprites/building-school.png"
+  },
+  {
+    "key": "building-wizard",
+    "file": "assets/sprites/building-wizard.png",
+    "frameWidth": 64,
+    "frameHeight": 128
+  },
+  {
+    "key": "magic-sparkle",
+    "file": "assets/sprites/magic-sparkle.png",
+    "frameWidth": 16,
+    "frameHeight": 16
+  },
+  {
+    "key": "f-catsuc-logo",
+    "file": "assets/sprites/f-catsuc-logo.png"
   },
   {
     "key": "obj-bulletin",
