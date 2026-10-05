@@ -76,25 +76,28 @@ const UP_BODY = [
   ".... Pppp pppP ....",
 ];
 
-/** De perfil, olhando para a esquerda (a direita é o espelho). */
+/**
+ * De perfil, olhando para a esquerda (a direita é o espelho). Mais fino
+ * que de frente: cabeça de 9px (nariz à parte) e tronco de 6px.
+ */
 const SIDE_BODY = [
-  ".... .hhh hh.. ....",
-  ".... hhhh hhhh ....",
-  "...h hHHh hhhh h...",
-  "...h Hhhh hhhh h...",
-  "...h shhh hhhh h...",
-  "...s ssss hhhh h...",
-  "...s esss shhh h...",
-  "..ss esss Shhh h...",
-  "...s ssss hhhh h...",
-  ".... Ssss shhh ....",
-  ".... .sSs .... ....",
-  ".... tttt tttT ....",
-  ".... tttt tttT ....",
-  ".... tttt tttT ....",
-  ".... tttt tttT ....",
-  ".... tttt tttT ....",
-  ".... Pppp pppP ....",
+  ".....hhhh.......",
+  "....hhhhhhh.....",
+  "...hhHHhhhhh....",
+  "...hHhhhhhhh....",
+  "...hshhhhhhh....",
+  "...ssssshhhh....",
+  "...sesssshhh....",
+  "..ssesssShhh....",
+  "...ssssshhhh....",
+  "....Ssssshhh....",
+  ".....sSs........",
+  ".....tttttT.....",
+  ".....tttttT.....",
+  ".....tttttT.....",
+  ".....tttttT.....",
+  ".....tttttT.....",
+  ".....PppppP.....",
 ];
 
 // ── braços ──
@@ -122,24 +125,24 @@ function frontArms(liftLeft: boolean, liftRight: boolean): string[] {
 const SIDE_ARM = {
   neutral: [
     "................",
-    "......AT........",
-    "......AT........",
-    "......AT........",
-    "......ss........",
+    ".......AT.......",
+    ".......AT.......",
+    ".......AT.......",
+    ".......ss.......",
   ],
   forward: [
     "................",
+    "......AT........",
     ".....AT.........",
     "....AT..........",
-    "...AT...........",
-    "..ss............",
+    "...ss...........",
   ],
   forwardHalf: [
     "................",
+    ".......AT.......",
     "......AT........",
-    ".....AT.........",
-    ".....AT.........",
-    "....ss..........",
+    "......AT........",
+    ".....ss.........",
   ],
   back: [
     "................",
@@ -151,9 +154,9 @@ const SIDE_ARM = {
   backHalf: [
     "................",
     ".......AT.......",
-    ".......AT.......",
     "........AT......",
-    "........ss......",
+    "........AT......",
+    ".........s......",
   ],
 };
 

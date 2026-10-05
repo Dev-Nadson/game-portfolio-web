@@ -7,6 +7,7 @@ import { EDGE_PARTS, KENNEY, customTile, type CustomTile, type EdgedTile } from 
  */
 export type Terrain =
   | "grass"
+  | "meadow"
   | "path"
   | "plaza"
   | "water"
@@ -55,6 +56,27 @@ export class TerrainGrid {
 
   rect(t: Terrain, x: number, y: number, w: number, h: number): this {
     for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) if (this.cells[j]?.[i]) this.cells[j][i] = t;
+    return this;
+  }
+
+  /**
+   * Converte em `t` toda célula `within` que encosta (8 vizinhos) numa
+   * célula `around` — ex.: a faixa de areia em volta de uma ilha de grama
+   * no mar, incluindo as diagonais. `area` limita a busca (x, y, w, h).
+   */
+  ring(t: Terrain, around: Terrain, within: Terrain, area?: [number, number, number, number]): this {
+    const [ax, ay, aw, ah] = area ?? [0, 0, this.width, this.height];
+    const hits: [number, number][] = [];
+    for (let y = ay; y < ay + ah; y++) {
+      for (let x = ax; x < ax + aw; x++) {
+        if (this.get(x, y) !== within) continue;
+        let touches = false;
+        for (let dy = -1; dy <= 1 && !touches; dy++)
+          for (let dx = -1; dx <= 1 && !touches; dx++) touches = this.get(x + dx, y + dy) === around;
+        if (touches) hits.push([x, y]);
+      }
+    }
+    for (const [x, y] of hits) this.cells[y][x] = t;
     return this;
   }
 
@@ -202,6 +224,12 @@ export function bake(grid: TerrainGrid, wallStyle: WallStyle = "office"): BakedT
           tile = r < 0.06 ? KENNEY.grassFlowers : r < 0.22 ? KENNEY.grassTufts : KENNEY.grass;
           break;
         }
+        case "meadow": {
+          // campo: a mesma grama, mas bem mais florida
+          const r = hash(x, y);
+          tile = r < 0.3 ? KENNEY.grassFlowers : r < 0.55 ? KENNEY.grassTufts : KENNEY.grass;
+          break;
+        }
         case "path":
           tile = autotile(same, PATH_EDGES);
           break;
@@ -219,7 +247,8 @@ export function bake(grid: TerrainGrid, wallStyle: WallStyle = "office"): BakedT
           tile = autotile(same, ROCK_EDGES);
           break;
         case "pier":
-          tile = w(grid.get(x, y + 1) === "pier" ? "pier" : "pier_end");
+          // ponte de 2 tiles: metade esquerda se o vizinho da direita também é ponte
+          tile = w(grid.get(x + 1, y) === "pier" ? "pier_l" : "pier_r");
           break;
         case "plaza":
           tile = KENNEY.plaza;

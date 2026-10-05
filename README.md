@@ -3,13 +3,14 @@
 Jogo top-down em pixel art, no estilo Stardew Valley, que funciona como
 currículo: você anda por uma vila e descobre a carreira do Nadson.
 
-- **Torre Catsuc** (NO): três zonas contando a progressão Suporte → Júnior → Pleno
+- **Prédio da Catsuc** (NO): três zonas contando a progressão Suporte → Júnior → Pleno
 - **Clínica NeuroKids** (NE): API NestJS, frontend, RBAC, auditoria e o pipeline de RAG
 - **Escola UNIFAVIP** (SE): graduação, PROUNI, ênfases e certificação Rocketseat
-- **Horta da stack** (SO): cada canteiro é uma categoria, cada planta uma tecnologia
-- **Praça** (centro): boas-vindas, resumo, contato (com links) e idiomas
-- **Em breve:** farol na praia (projetos pessoais e futuros), caverna na serra
-  (hobbies e fora do código) e a torre do mago a leste
+- **Horta da stack** (SE): cada canteiro é uma categoria, cada planta uma tecnologia
+- **Praça redonda** (centro): boas-vindas, resumo, contato (com links) e idiomas
+- Também: serra com cachoeira a oeste, campo de flores com lagoinha e praia a sudoeste
+- **Em breve:** farol na ilha, ligada à praia por uma ponte (projetos pessoais e
+  futuros), caverna na serra (hobbies e fora do código) e a torre do mago a leste
 
 ![Vila](docs/screenshot-village.png)
 
@@ -38,7 +39,8 @@ Abra com `?debug` na URL para ver os colisores.
 
 - **WASD** ou **setas**: andar · **Shift**: correr
 - **E**, **Espaço** ou **Enter**: interagir / avançar o diálogo
-- **Esc**: fechar o diálogo · **1–4**: abrir os links do contato
+- **M** (ou clique no minimapa): mapa da vila com o nome dos lugares
+- **Esc**: fechar o diálogo ou o mapa · **1–4**: abrir os links do contato
 
 As estrelinhas marcam o que ainda não foi visto. O progresso
 ("Descobertos X/Y") fica salvo no navegador.
@@ -81,7 +83,7 @@ src/
   entities/Player.ts
   entities/player-sheet.ts    layout da spritesheet do jogador (usado também pelo gerador)
   systems/                    camera, map-render, interaction, progress, transition
-  ui/                         DialogBox, Prompt, helpers de texto e moldura
+  ui/                         DialogBox, Prompt, Minimap, helpers de texto e moldura
 docs/                         screenshots e prévia do tileset com índices
 ```
 
@@ -96,8 +98,13 @@ tiles, no centro-inferior do sprite. Caminhos, água, areia, mar e pedra precisa
 ter pelo menos 2 tiles de largura para o autotile funcionar. A cor da margem
 fica gravada no tile: areia e pedra têm borda de grama e o mar tem borda de
 areia, então deixe 2 tiles de areia entre a grama e o mar e uma faixa de grama
-entre a pedra e a areia. As árvores avulsas usam `tree(x, y)`, que sorteia o
-tipo pela posição e pela zona da vila (`TREE_ZONES`).
+entre a pedra e a areia (`grid.ring(...)` faz essa faixa em volta de uma ilha).
+A faixa de pedra da serra tem pelo menos 9 tiles: mais estreita, a grama sob as
+montanhas ficaria andável e o personagem sumiria atrás delas. As árvores
+avulsas usam `tree(x, y)`, que sorteia o tipo pela posição e pela zona da vila
+(`TREE_ZONES`). Props com `wander` (borboletas, patos, faíscas) vão e voltam
+sozinhos. Os lugares do minimapa ficam em `LANDMARKS`; o mapa é desenhado em
+tempo de execução a partir dos tiles e props (`src/ui/Minimap.ts`).
 
 **Tela:** o jogo ocupa a janela inteira. O zoom do mundo é sempre inteiro e
 escolhido para mostrar cerca de 480x270 px de mundo (`src/systems/camera.ts`);

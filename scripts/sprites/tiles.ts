@@ -22,14 +22,21 @@ interface Sides {
 }
 
 /** Forma da margem de um tile de borda: true = pixel do lado de fora. */
-function sideShape(side: Sides, wobble: (x: number, y: number) => number): (x: number, y: number) => boolean {
+function sideShape(
+  side: Sides,
+  wobble: (x: number, y: number) => number,
+  profile?: readonly number[]
+): (x: number, y: number) => boolean {
   return (x, y) => {
     if (outside(x, y)) return false;
-    const b = B + wobble(x, y);
-    if (side.n && y < b) return true;
-    if (side.s && y >= T - b) return true;
-    if (side.w && x < b) return true;
-    if (side.e && x >= T - b) return true;
+    // `profile` desenha a margem: o deslocamento segue x nas bordas de cima e
+    // de baixo e y nas laterais, e repete a cada 16px para emendar os tiles
+    const bx = B + wobble(x, y) + (profile?.[x] ?? 0);
+    const by = B + wobble(x, y) + (profile?.[y] ?? 0);
+    if (side.n && y < bx) return true;
+    if (side.s && y >= T - bx) return true;
+    if (side.w && x < by) return true;
+    if (side.e && x >= T - by) return true;
     // arredonda os cantos externos
     const r = 4;
     const far = (cx: number, cy: number) => (x - cx) ** 2 + (y - cy) ** 2 > r * r;
@@ -61,6 +68,8 @@ interface EdgeStyle {
   rims: (string | null)[];
   /** a margem pode ser irregular (±1px), como as bordas de caminho do Kenney */
   wobble?: boolean;
+  /** contorno da margem ao longo do tile (16 valores, 0–3px), para bordas orgânicas */
+  profile?: readonly number[];
   /** detalhes pintados por cima (ondinhas, rachaduras, face do penhasco) */
   detail?: (img: Img, isOut: (x: number, y: number) => boolean, side: Sides) => void;
 }
@@ -109,16 +118,17 @@ function bump(x: number, y: number): number {
 /** As 13 peças de um terreno com borda (mesmo esquema do caminho de terra). */
 function edgedSet(kind: EdgedTile, style: EdgeStyle): Record<`${EdgedTile}_${EdgePart}`, Img> {
   const wobble = style.wobble ? bump : () => 0;
+  const shape = (side: Sides) => sideShape(side, wobble, style.profile);
   const parts: Record<EdgePart, Img> = {
-    tl: edgedTile(sideShape({ n: true, w: true }, wobble), style, { n: true, w: true }),
-    t: edgedTile(sideShape({ n: true }, wobble), style, { n: true }),
-    tr: edgedTile(sideShape({ n: true, e: true }, wobble), style, { n: true, e: true }),
-    l: edgedTile(sideShape({ w: true }, wobble), style, { w: true }),
-    c: edgedTile(sideShape({}, wobble), style),
-    r: edgedTile(sideShape({ e: true }, wobble), style, { e: true }),
-    bl: edgedTile(sideShape({ s: true, w: true }, wobble), style, { s: true, w: true }),
-    b: edgedTile(sideShape({ s: true }, wobble), style, { s: true }),
-    br: edgedTile(sideShape({ s: true, e: true }, wobble), style, { s: true, e: true }),
+    tl: edgedTile(shape({ n: true, w: true }), style, { n: true, w: true }),
+    t: edgedTile(shape({ n: true }), style, { n: true }),
+    tr: edgedTile(shape({ n: true, e: true }), style, { n: true, e: true }),
+    l: edgedTile(shape({ w: true }), style, { w: true }),
+    c: edgedTile(shape({}), style),
+    r: edgedTile(shape({ e: true }), style, { e: true }),
+    bl: edgedTile(shape({ s: true, w: true }), style, { s: true, w: true }),
+    b: edgedTile(shape({ s: true }), style, { s: true }),
+    br: edgedTile(shape({ s: true, e: true }), style, { s: true, e: true }),
     in_tl: edgedTile(innerShape(-1, -1), style),
     in_tr: edgedTile(innerShape(T, -1), style),
     in_bl: edgedTile(innerShape(-1, T), style),
@@ -214,7 +224,11 @@ const SEA2: EdgeStyle = {
   ),
 };
 
-/** Chão de pedra da serra: borda de grama e, ao sul, a face do penhasco. */
+/**
+ * Chão de pedra da serra. A margem é orgânica (perfil irregular), sem
+ * contorno duro: só uma linha de pedra escura por dentro, sombra e
+ * pedrinhas soltas na grama. Ao sul, uma face curta de penhasco.
+ */
 const ROCK: EdgeStyle = {
   seed: 45,
   fill: speckle(C.rock, [
@@ -223,39 +237,59 @@ const ROCK: EdgeStyle = {
   ]),
   outer: () => GRASS,
   bank: C.grassDeep,
-  rims: [C.outline, C.rockLight],
+  rims: [C.rockDark, null],
+  profile: [0, 1, 1, 2, 2, 1, 0, 0, 1, 2, 3, 2, 1, 1, 0, 0],
   detail: (img, isOut, side) => {
+    const rand = rng(46);
+    // pedrinhas soltas na grama, perto da margem
+    for (let i = 0; i < 40; i++) {
+      const x = Math.floor(rand() * T);
+      const y = Math.floor(rand() * T);
+      if (!isOut(x, y)) continue;
+      const near = [-2, -1, 1, 2].some((d) => !isOut(x + d, y) || !isOut(x, y + d));
+      if (near && rand() < 0.35) img.set(x, y, rand() < 0.5 ? C.rock : C.rockDark);
+    }
     if (!side.s) return;
     // face vertical do penhasco logo acima da grama
     for (let x = 0; x < T; x++) {
       let ground = T - 1;
       while (ground > 0 && isOut(x, ground)) ground--;
-      // ground = último pixel de pedra nesta coluna
       if (isOut(x, ground)) continue;
       for (let k = 0; k < 5; k++) {
         const y = ground - k;
         if (y < 0 || isOut(x, y)) break;
-        const c = k === 0 ? C.outline : k === 4 ? C.rockDark : x % 5 === 2 ? C.rockDark : C.rockFace;
+        const c = k === 0 ? "#4a4458" : k === 4 ? C.rockDark : x % 5 === 2 ? C.rockDark : C.rockFace;
         img.set(x, y, c);
       }
     }
   },
 };
 
-function pier(end: boolean): Img {
+/**
+ * Ponte de madeira com 2 tiles de largura: tábuas na horizontal e, do
+ * lado de fora de cada metade, viga escura com corrimão e postes.
+ */
+function bridge(side: "l" | "r"): Img {
   const img = new Img(T, T);
-  img.rect(0, 0, T, T, C.wood);
-  // tábuas na vertical, com frestas
-  for (const x of [0, 5, 10, 15]) img.vline(x, 0, 15, C.woodDark);
-  for (const x of [2, 7, 12]) img.vline(x, 0, 15, C.woodLight);
-  // pregos
-  for (const x of [3, 8, 13]) img.set(x, 3, C.outline).set(x, 12, C.outline);
-  if (end) {
-    // borda de madeira na ponta do píer
-    img.rect(0, 13, T, 3, C.woodDark);
-    img.hline(0, 15, 13, C.wood);
-    img.set(1, 14, C.outline).set(14, 14, C.outline);
+  for (let y = 0; y < T; y++) {
+    const inRow = y % 4;
+    const base = Math.floor(y / 4) % 2 ? C.wood : "#c97b55";
+    img.hline(0, T - 1, y, inRow === 3 ? C.woodDark : inRow === 0 ? C.woodLight : base);
   }
+  // pregos nas pontas das tábuas
+  const nail = side === "l" ? 5 : 10;
+  for (let y = 1; y < T; y += 4) img.set(nail, y + 1, C.outline);
+  // viga, corrimão e postes do lado de fora
+  const x0 = side === "l" ? 0 : T - 3;
+  img.rect(x0, 0, 3, T, C.woodDark);
+  img.vline(side === "l" ? 1 : T - 2, 0, T - 1, C.wood);
+  for (const py of [2, 10]) {
+    img.rect(x0, py, 3, 4, C.wood);
+    img.hline(x0, x0 + 2, py, C.woodLight);
+    img.hline(x0, x0 + 2, py + 3, C.outline);
+  }
+  // sombra da viga sobre as tábuas
+  img.vline(side === "l" ? 3 : T - 4, 0, T - 1, "#00000030");
   return img;
 }
 
@@ -368,8 +402,8 @@ export function drawCustomTiles(): Record<CustomTile, Img> {
     ...edgedSet("sea", SEA),
     ...edgedSet("sea2", SEA2),
     ...edgedSet("rock", ROCK),
-    pier: pier(false),
-    pier_end: pier(true),
+    pier_l: bridge("l"),
+    pier_r: bridge("r"),
     soil: soil(),
     floor_wood_a: planks(C.wood, C.woodLight, C.woodDark, 0),
     floor_wood_b: planks(C.wood, C.woodLight, C.woodDark, 9),

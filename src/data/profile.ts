@@ -18,7 +18,7 @@ export const WELCOME: Content = {
       text: "Cada prédio é uma etapa da carreira, a horta guarda a stack técnica e a praça tem o resumo e o contato.",
     },
     {
-      text: "WASD ou setas: andar  •  Shift: correr\nE, Espaço ou Enter: interagir  •  Esc: fechar\n\nAs estrelinhas marcam o que você ainda não viu.",
+      text: "WASD ou setas: andar  •  Shift: correr\nE, Espaço ou Enter: interagir  •  Esc: fechar\nM: mapa da vila\n\nAs estrelinhas marcam o que você ainda não viu.",
     },
   ],
 };

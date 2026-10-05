@@ -37,16 +37,29 @@ export interface PropDef {
   x: number;
   y: number;
   /**
-   * Colisor em px do mundo, alinhado ao centro-inferior do sprite.
-   * `false` = atravessável. Omitido = base do sprite.
+   * Colisor em px do mundo, alinhado ao centro-inferior do sprite
+   * (`dx`/`dy` deslocam). `false` = atravessável. Omitido = base do sprite.
    */
-  body?: { w: number; h: number; dy?: number } | false;
+  body?: { w: number; h: number; dx?: number; dy?: number } | false;
   /** "floor" fica sob tudo (tapetes); "auto" ordena por Y (padrão) */
   layer?: "floor" | "auto";
   content?: Content;
   /** frames da spritesheet para animar em loop */
   anim?: { frames: number[]; fps: number };
   flipX?: boolean;
+  /**
+   * Vai e volta sozinho (borboletas, faíscas): deslocamento máximo em
+   * tiles e duração de cada ida em ms. Sem corpo nem conteúdo.
+   */
+  wander?: { x: number; y: number; ms: number };
+}
+
+/** Lugar com nome no minimapa e no mapa grande (posição em tiles). */
+export interface Landmark {
+  name: string;
+  x: number;
+  y: number;
+  color: string;
 }
 
 export interface DoorDef {
@@ -82,6 +95,8 @@ export interface MapDef {
   /** pares de tiles trocados em loop no chão (animação do mar) */
   tileAnims?: [number, number][];
   props: PropDef[];
+  /** lugares marcados no mapa; só mapas com landmarks mostram o minimapa */
+  landmarks?: Landmark[];
   doors: DoorDef[];
   exits: ExitDef[];
   spawns: Record<string, Spawn>;

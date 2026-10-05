@@ -1,9 +1,10 @@
 import Phaser from "phaser";
 import { COLORS } from "../config";
-import type { Content } from "../types";
+import type { Content, MapDef } from "../types";
 import { PROFILE } from "../data/profile";
 import { DialogBox } from "../ui/DialogBox";
 import { Prompt } from "../ui/Prompt";
+import { Minimap } from "../ui/Minimap";
 import { resizePanel, setTextResolution, textStyle, woodPanel } from "../ui/text";
 import { events, progress } from "../systems/progress";
 
@@ -12,10 +13,11 @@ const REOPEN_GUARD_MS = 180;
 /** Abaixo desta largura (coordenadas da UI) a linha de ajuda some. */
 const HELP_MIN_WIDTH = 1000;
 const TITLE_PANEL = { w: 860, h: 300 } as const;
+const HELP = "WASD/setas: andar  ·  Shift: correr  ·  E: interagir";
 
 /**
  * Camada de interface que roda por cima das outras cenas: título, HUD
- * (local + progresso), prompt "[E]" e balão de diálogo.
+ * (local + progresso), minimapa, prompt "[E]" e balão de diálogo.
  *
  * A UI é montada em "coordenadas da UI" (viewW x viewH). Em telas muito
  * grandes a câmera dela usa zoom 2 — sempre inteiro, para as molduras em
@@ -24,6 +26,7 @@ const TITLE_PANEL = { w: 860, h: 300 } as const;
 export class UIScene extends Phaser.Scene {
   private dialog!: DialogBox;
   private prompt!: Prompt;
+  private minimap!: Minimap;
   private hud!: Phaser.GameObjects.Container;
   private locationTag!: Phaser.GameObjects.NineSlice;
   private locationText!: Phaser.GameObjects.Text;
@@ -43,11 +46,15 @@ export class UIScene extends Phaser.Scene {
   create(): void {
     this.dialog = new DialogBox(this);
     this.prompt = new Prompt(this);
+    this.minimap = new Minimap(this);
     this.buildHud();
 
     const kb = this.input.keyboard!;
     for (const key of ["E", "SPACE", "ENTER"]) kb.on(`keydown-${key}`, () => this.onConfirm());
-    kb.on("keydown-ESC", () => this.dialog.close());
+    kb.on("keydown-ESC", () => (this.minimap.isOpen() ? this.minimap.close() : this.dialog.close()));
+    kb.on("keydown-M", () => {
+      if (!this.title && !this.dialog.isOpen()) this.minimap.toggle();
+    });
     ["ONE", "TWO", "THREE", "FOUR"].forEach((key, i) => kb.on(`keydown-${key}`, () => this.dialog.openLink(i + 1)));
     this.input.on("pointerdown", () => this.onConfirm());
 
@@ -63,7 +70,7 @@ export class UIScene extends Phaser.Scene {
   // ── API usada pelas cenas do mundo ──
 
   get busy(): boolean {
-    return this.dialog.isOpen() || this.title !== null;
+    return this.dialog.isOpen() || this.title !== null || this.minimap.isOpen();
   }
 
   canInteract(): boolean {
@@ -83,17 +90,27 @@ export class UIScene extends Phaser.Scene {
     this.prompt.hide();
   }
 
-  /** Chamado por cada cena explorável ao entrar: atualiza e mostra o HUD. */
-  enterWorld(locationName: string): void {
-    this.locationText.setText(locationName);
+  /** Chamado por cada cena explorável ao entrar: atualiza e mostra o HUD e o minimapa. */
+  enterWorld(def: MapDef): void {
+    this.locationText.setText(def.name);
     resizePanel(this.locationTag, this.locationText.width + 44, 52);
     this.updateProgress();
     this.hud.setVisible(true);
+    // o mapa só existe onde há minimapa (a vila)
+    this.help.setText(def.landmarks ? `${HELP}  ·  M: mapa` : HELP);
+    this.minimap.setVisible(true);
+    this.minimap.setMap(def);
+  }
+
+  /** Posição do jogador (px do mundo), para o ponto do minimapa. */
+  trackPlayer(x: number, y: number): void {
+    this.minimap.track(x, y);
   }
 
   showTitle(onStart: () => void): void {
     this.onStart = onStart;
     this.hud.setVisible(false);
+    this.minimap.setVisible(false);
     this.prompt.hide();
     this.title?.destroy();
     this.title = this.buildTitle();
@@ -110,12 +127,18 @@ export class UIScene extends Phaser.Scene {
     this.cameras.main.setZoom(this.zoom).centerOn(width / (2 * this.zoom), height / (2 * this.zoom));
     setTextResolution(this, this.zoom);
 
-    this.help.setPosition(this.viewW - 18, 18).setVisible(this.viewW >= HELP_MIN_WIDTH);
+    const helpVisible = this.viewW >= HELP_MIN_WIDTH;
+    this.help.setPosition(this.viewW - 18, 18).setVisible(helpVisible);
+    this.minimap.layout(this.viewW, this.viewH, helpVisible ? 48 : 16);
     this.dialog.layout(this.viewW, this.viewH);
     if (this.title) this.layoutTitle(this.title);
   }
 
   private onConfirm(): void {
+    if (this.minimap.isOpen()) {
+      this.minimap.close();
+      return;
+    }
     if (this.title) {
       const start = this.onStart;
       this.onStart = null;
@@ -144,7 +167,7 @@ export class UIScene extends Phaser.Scene {
       .text(
         0,
         18,
-        "WASD/setas: andar  ·  Shift: correr  ·  E: interagir",
+        HELP,
         textStyle(18, { color: COLORS.paper, stroke: COLORS.ink, strokeThickness: 5 })
       )
       .setOrigin(1, 0);
@@ -178,7 +201,7 @@ export class UIScene extends Phaser.Scene {
       .text(
         0,
         0,
-        "WASD ou setas para andar  ·  E para interagir  ·  Esc para fechar",
+        "WASD ou setas para andar  ·  E para interagir  ·  M para o mapa  ·  Esc para fechar",
         textStyle(20, { color: COLORS.paper, stroke: COLORS.ink, strokeThickness: 5 })
       )
       .setOrigin(0.5);

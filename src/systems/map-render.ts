@@ -64,6 +64,41 @@ function ensureAnim(scene: Phaser.Scene, texture: string, frames: number[], fps:
   return key;
 }
 
+/**
+ * Voo curvo de ida e volta: x e y com durações diferentes. O sprite vira
+ * para o lado do movimento e fica um pouco à frente do que está por perto.
+ */
+function wander(scene: Phaser.Scene, sprite: Phaser.GameObjects.Sprite, w: NonNullable<PropDef["wander"]>): void {
+  const T = GAME.tile;
+  const delay = Math.random() * w.ms;
+  sprite.setDepth(sprite.y + 16);
+  if (w.x !== 0) {
+    const turn = () => sprite.toggleFlipX();
+    scene.tweens.add({
+      targets: sprite,
+      x: sprite.x + w.x * T,
+      duration: w.ms,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+      delay,
+      onYoyo: turn,
+      onRepeat: turn,
+    });
+  }
+  if (w.y !== 0) {
+    scene.tweens.add({
+      targets: sprite,
+      y: sprite.y + w.y * T,
+      duration: w.ms * 0.7,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+      delay,
+    });
+  }
+}
+
 function spawnProp(
   scene: Phaser.Scene,
   prop: PropDef,
@@ -82,10 +117,12 @@ function spawnProp(
     sprite.play({ key, delay: Math.random() * 1500 });
   }
 
+  if (prop.wander) wander(scene, sprite, prop.wander);
+
   let rect: Phaser.Geom.Rectangle;
   if (prop.body !== false) {
     const b = prop.body ?? { w: sprite.width - 4, h: Math.min(10, sprite.height / 3) };
-    rect = new Phaser.Geom.Rectangle(x - b.w / 2, y - (b.dy ?? 0) - b.h, b.w, b.h);
+    rect = new Phaser.Geom.Rectangle(x - b.w / 2 + (b.dx ?? 0), y - (b.dy ?? 0) - b.h, b.w, b.h);
     const zone = scene.add.zone(rect.centerX, rect.centerY, rect.width, rect.height);
     solids.add(zone);
   } else {

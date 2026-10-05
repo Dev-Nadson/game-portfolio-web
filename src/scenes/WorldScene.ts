@@ -62,7 +62,8 @@ export abstract class WorldScene extends Phaser.Scene {
       "W,A,S,D,UP,DOWN,LEFT,RIGHT,SHIFT,E,SPACE,ENTER"
     ) as Keys;
 
-    this.ui.enterWorld(def.name);
+    this.ui.enterWorld(def);
+    this.ui.trackPlayer(this.player.x, this.player.y);
     fadeIn(this);
   }
 
@@ -76,6 +77,7 @@ export abstract class WorldScene extends Phaser.Scene {
 
     const input = this.readInput();
     this.player.move(input);
+    this.ui.trackPlayer(this.player.x, this.player.y);
 
     this.target = findTarget(this.items, this.player.probe(), GAME.interactRange);
     if (this.target) {

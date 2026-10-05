@@ -93,10 +93,22 @@ export const SPRITES = [
     "file": "assets/sprites/rock-small.png"
   },
   {
+    "key": "foothill-a",
+    "file": "assets/sprites/foothill-a.png"
+  },
+  {
+    "key": "foothill-b",
+    "file": "assets/sprites/foothill-b.png"
+  },
+  {
+    "key": "cliff-wall",
+    "file": "assets/sprites/cliff-wall.png"
+  },
+  {
     "key": "waterfall",
     "file": "assets/sprites/waterfall.png",
-    "frameWidth": 32,
-    "frameHeight": 48
+    "frameWidth": 48,
+    "frameHeight": 80
   },
   {
     "key": "cave-entrance",
@@ -105,8 +117,20 @@ export const SPRITES = [
   {
     "key": "lighthouse",
     "file": "assets/sprites/lighthouse.png",
-    "frameWidth": 32,
-    "frameHeight": 80
+    "frameWidth": 112,
+    "frameHeight": 128
+  },
+  {
+    "key": "sea-rock",
+    "file": "assets/sprites/sea-rock.png"
+  },
+  {
+    "key": "sea-rock-b",
+    "file": "assets/sprites/sea-rock-b.png"
+  },
+  {
+    "key": "piling",
+    "file": "assets/sprites/piling.png"
   },
   {
     "key": "boat",
@@ -193,6 +217,88 @@ export const SPRITES = [
     "file": "assets/sprites/sparkle.png",
     "frameWidth": 8,
     "frameHeight": 8
+  },
+  {
+    "key": "plaza-floor",
+    "file": "assets/sprites/plaza-floor.png"
+  },
+  {
+    "key": "tall-grass",
+    "file": "assets/sprites/tall-grass.png"
+  },
+  {
+    "key": "tall-grass-b",
+    "file": "assets/sprites/tall-grass-b.png"
+  },
+  {
+    "key": "lily-pad",
+    "file": "assets/sprites/lily-pad.png"
+  },
+  {
+    "key": "cattails",
+    "file": "assets/sprites/cattails.png"
+  },
+  {
+    "key": "duck",
+    "file": "assets/sprites/duck.png",
+    "frameWidth": 16,
+    "frameHeight": 16
+  },
+  {
+    "key": "stepping-stone",
+    "file": "assets/sprites/stepping-stone.png"
+  },
+  {
+    "key": "butterfly",
+    "file": "assets/sprites/butterfly.png",
+    "frameWidth": 16,
+    "frameHeight": 16
+  },
+  {
+    "key": "butterfly-blue",
+    "file": "assets/sprites/butterfly-blue.png",
+    "frameWidth": 16,
+    "frameHeight": 16
+  },
+  {
+    "key": "flower-tulip",
+    "file": "assets/sprites/flower-tulip.png"
+  },
+  {
+    "key": "flower-tulip-b",
+    "file": "assets/sprites/flower-tulip-b.png"
+  },
+  {
+    "key": "flower-daisy",
+    "file": "assets/sprites/flower-daisy.png"
+  },
+  {
+    "key": "flower-daisy-b",
+    "file": "assets/sprites/flower-daisy-b.png"
+  },
+  {
+    "key": "flower-lavender",
+    "file": "assets/sprites/flower-lavender.png"
+  },
+  {
+    "key": "flower-lavender-b",
+    "file": "assets/sprites/flower-lavender-b.png"
+  },
+  {
+    "key": "flower-buttercup",
+    "file": "assets/sprites/flower-buttercup.png"
+  },
+  {
+    "key": "flower-buttercup-b",
+    "file": "assets/sprites/flower-buttercup-b.png"
+  },
+  {
+    "key": "flower-poppy",
+    "file": "assets/sprites/flower-poppy.png"
+  },
+  {
+    "key": "flower-poppy-b",
+    "file": "assets/sprites/flower-poppy-b.png"
   },
   {
     "key": "sign-backend",

@@ -27,7 +27,9 @@ interface Peak {
 
 /**
  * Montanha com picos, lado esquerdo iluminado, lado direito na sombra,
- * fendas e neve no topo. A base é reta para encostar no chão de pedra.
+ * fendas e neve no topo. As laterais descem até os cantos da base (nada
+ * de corte vertical) e a base é irregular e sem contorno, para a montanha
+ * se fundir com o chão em vez de parecer um recorte colado.
  */
 function drawMountain(w: number, h: number, seed: number, peaks: Peak[], snowDepth: number): Img {
   const img = new Img(w, h);
@@ -39,14 +41,18 @@ function drawMountain(w: number, h: number, seed: number, peaks: Peak[], snowDep
     const heights = peaks.map((p) => p.y + Math.abs(x - p.x) * p.slope);
     const y = Math.min(...heights);
     owner.push(heights.indexOf(y));
-    top.push(Math.max(1, Math.round(y + noise[x])));
+    // encosta que desce até o canto da base
+    const foot = h - 1 - Math.min(x, w - 1 - x) * 2.8;
+    top.push(Math.max(1, Math.round(Math.max(y + noise[x], foot))));
   }
+  // base irregular: cada coluna termina 0–2px acima da última linha
+  const base = walk(w, rand, 1).map((v) => h - 2 + v);
   const main = peaks[0];
   const ridgeNoise = walk(h, rand, 2);
   const ridgeX = (y: number) => main.x + (y - main.y) * 0.18 + ridgeNoise[y];
 
   for (let x = 0; x < w; x++) {
-    for (let y = top[x]; y < h; y++) {
+    for (let y = top[x]; y <= base[x]; y++) {
       const lit = x < ridgeX(y);
       const depth = y - top[x];
       let c: string = lit ? C.rock : C.rockDark;
@@ -103,9 +109,16 @@ function drawMountain(w: number, h: number, seed: number, peaks: Peak[], snowDep
     img.ellipse(x, y, 2 + rand() * 1.5, 1.3, lit ? C.grassDark : "#2f7a43");
     img.set(x - 1, y - 1, lit ? C.grass : C.grassDark);
   }
+  // tufos de capim atravessando a base
+  for (let i = 0; i < w / 14; i++) {
+    const x = 2 + Math.floor(rand() * (w - 4));
+    if (img.alpha(x, base[x]) === 0) continue;
+    img.vline(x, base[x] - 2, base[x], C.grassDark).set(x + 1, base[x] - 1, C.grass).set(x - 1, base[x], C.grassDark);
+  }
+  const before = img.clone();
   img.outline(C.outline);
-  // sem contorno na base: a montanha se funde com o chão de pedra
-  for (let x = 0; x < w; x++) img.clear(x, h - 1);
+  // sem contorno perto da base: a montanha se funde com o chão
+  for (let y = h - 6; y < h; y++) for (let x = 0; x < w; x++) if (before.alpha(x, y) === 0) img.clear(x, y);
   return img;
 }
 
@@ -136,118 +149,356 @@ function drawRockSmall(): Img {
   return img.outline(C.outline).shadow(8, 13, 5, 1);
 }
 
-/** Cachoeira 32x48 em 3 quadros: listras descendo e espuma na base. */
-function drawWaterfall(): SpriteOut {
-  const frames = [0, 1, 2].map((f) => {
-    const img = new Img(32, 48);
-    const rand = rng(50 + f);
-    img.rect(8, 0, 16, 40, C.water);
-    img.vline(8, 0, 39, C.waterDark).vline(23, 0, 39, C.waterDark);
-    for (let x = 10; x < 22; x += 3) {
-      for (let y = (f * 4 + x * 5) % 12; y < 40; y += 12) img.vline(x, y, y + 4, C.waterLight);
+/**
+ * Montículo de transição entre a serra e o campo: um morrinho de grama
+ * com pedras aflorando. A base tem a cor exata da grama do chão e não
+ * tem contorno, então ele "nasce" do terreno.
+ */
+function drawFoothill(w: number, h: number, seed: number): Img {
+  const img = new Img(w, h);
+  const rand = rng(seed);
+  const noise = walk(w, rand, 2);
+  const cx = (w - 1) / 2;
+  const top: number[] = [];
+  for (let x = 0; x < w; x++) {
+    // perfil de domo com pés suaves: (1 − t²)^1,3 chega ao chão na horizontal
+    // (uma meia-elipse teria laterais verticais na base, que parecem um corte)
+    const t = Math.min(1, Math.abs((x - cx) / (w / 2)));
+    top.push(Math.round(h - 1 - (h - 5) * 0.72 * Math.pow(1 - t * t, 1.15) + noise[x]));
+  }
+  for (let x = 0; x < w; x++) {
+    for (let y = Math.max(0, top[x]); y < h; y++) {
+      const depth = y - top[x];
+      // luz da esquerda: brilho no topo, sombra só na borda direita
+      const shade = (x - cx) / (w / 2) + (depth < 3 ? -0.6 : 0);
+      let c: string = GRASS_GROUND;
+      if (depth < 2 && shade < 0.4) c = C.leaf;
+      else if (shade > 0.72 && y < h - 4) c = C.grassDeep;
+      img.set(x, y, c);
     }
-    img.hline(9, 22, 0, C.foam);
-    // espuma na base
-    img.ellipse(16, 41, 13, 5, C.waterLight);
-    for (let i = 0; i < 40; i++) {
-      const a = rand() * Math.PI;
-      const r = rand() * 11;
-      img.set(Math.round(16 + Math.cos(a) * r * 1.2), Math.round(41 - Math.sin(a) * r * 0.5), C.foam);
-    }
-    img.hline(5, 26, 44, C.foam);
-    return img.outline(C.outline);
+  }
+  // pedras aflorando
+  for (let i = 0; i < Math.round(w / 16) + 1; i++) {
+    const x = Math.round(w * 0.2 + rand() * w * 0.6);
+    const y = Math.round(top[x] + 4 + rand() * (h - top[x] - 9));
+    const r = 2.5 + rand() * 2.5;
+    img.ellipse(x, y, r + 1, r * 0.7 + 1, C.outline);
+    img.ellipse(x, y, r, r * 0.7, C.rock);
+    img.ellipse(x - 1, y - 1, r * 0.5, r * 0.35, C.rockLight);
+    img.hline(Math.round(x - r + 1), Math.round(x + r - 1), Math.round(y + r * 0.5), C.rockDark);
+  }
+  // tufos e florzinhas
+  for (let i = 0; i < w / 6; i++) {
+    const x = Math.floor(rand() * w);
+    const y = top[x] + 2 + Math.floor(rand() * (h - top[x] - 4));
+    if (img.alpha(x, y) === 0 || img.alpha(x, y - 1) === 0) continue;
+    if (rand() < 0.2) img.set(x, y, C.yellow);
+    else img.set(x, y, C.grassDark).set(x, y - 1, C.grassDark);
+  }
+  const before = img.clone();
+  // contorno verde-escuro: é relevo do chão, não um objeto
+  img.outline(C.grassDark);
+  for (let y = h - 6; y < h; y++) for (let x = 0; x < w; x++) if (before.alpha(x, y) === 0) img.clear(x, y);
+  return img;
+}
+
+/** Mesma cor do tile de grama do Kenney. */
+const GRASS_GROUND = "#84c669";
+
+/**
+ * Paredão de pedra da enseada (128x64): face com estratos verticais e
+ * saliências com mato. O topo é irregular e sem contorno, para emendar
+ * nas montanhas de trás; a base tem um vinco escuro onde encontra a grama.
+ */
+function drawCliffWall(): Img {
+  const w = 128;
+  const h = 64;
+  const img = new Img(w, h);
+  const rand = rng(97);
+  const topNoise = walk(w, rand, 5);
+  // topo irregular e laterais descendo em diagonal até a base, como as montanhas
+  const top = topNoise.map((v, x) => {
+    const edge = Math.min(x, w - 1 - x);
+    return Math.max(4 + v + Math.round(5 * Math.abs(Math.sin(x / 11))), h - 1 - edge * 2.2);
   });
-  return { img: sheet(frames, 3), frame: { w: 32, h: 48 } };
+  // facetas de pedra de larguras variadas: claras em cima, escuras embaixo
+  let fx = 0;
+  while (fx < w) {
+    const fw = 6 + Math.floor(rand() * 9);
+    const dark = rand() < 0.5;
+    // a parte de baixo, mais escura, começa numa altura diferente em cada faceta
+    const split = h * 0.45 + Math.round((rand() - 0.5) * 14);
+    for (let x = fx; x < Math.min(w, fx + fw); x++) {
+      for (let y = Math.max(0, top[x]); y < h; y++) {
+        const d = y - top[x];
+        const low = y > split;
+        let c: string = d < 2 ? C.rockLight : !low ? (dark ? C.rockDark : C.rock) : dark ? C.rockFace : "#655f75";
+        if (d >= 2 && x === fx) c = low ? C.rockDark : C.rockLight;
+        if (d >= 2 && x === fx + fw - 1) c = low ? "#4a4458" : C.rockFace;
+        img.set(x, y, c);
+      }
+    }
+    fx += fw;
+  }
+  // textura
+  for (let i = 0; i < (w * h) / 18; i++) {
+    const x = Math.floor(rand() * w);
+    const y = Math.floor(rand() * h);
+    if (img.alpha(x, y) > 0 && y > top[x] + 2) img.set(x, y, rand() < 0.5 ? C.rockDark : C.rock);
+  }
+  // saliências horizontais com mato
+  for (const ledgeY of [24, 42]) {
+    let x = 8 + Math.floor(rand() * 10);
+    while (x < w - 8) {
+      const len = 10 + Math.floor(rand() * 16);
+      const y = ledgeY + Math.floor(rand() * 4);
+      for (let k = x; k < Math.min(w - 8, x + len); k++) {
+        if (img.alpha(k, y) === 0) continue;
+        img.set(k, y, C.rockLight).set(k, y + 1, C.rockDark);
+        if (rand() < 0.5) img.set(k, y - 1, C.grassDark);
+        if (rand() < 0.25) img.set(k, y - 2, C.grass);
+      }
+      x += len + 8 + Math.floor(rand() * 12);
+    }
+  }
+  // vinco na base, onde o paredão encontra a grama
+  for (let x = 0; x < w; x++) if (img.alpha(x, h - 1) > 0) img.set(x, h - 1, "#4a4458").set(x, h - 2, C.rockDark);
+  // sem contorno: o paredão continua a rocha da serra
+  return img;
 }
 
 /**
- * Entrada da caverna 48x48: afloramento de pedra com a boca virada para o
- * sul. A abertura ocupa x 16–31, alinhada à grade — pode virar porta.
+ * Cachoeira 48x80 em 3 quadros: nasce num recorte de pedra no alto do
+ * paredão e cai numa bacia com borda de pedras (que cobre o laguinho de
+ * 3x2 tiles do mapa), com espuma, névoa e ondinhas.
+ */
+function drawWaterfall(): SpriteOut {
+  const frames = [0, 1, 2].map((f) => {
+    const img = new Img(48, 80);
+    const rand = rng(50 + f);
+    // bacia: borda de pedras e água
+    img.ellipse(24, 64, 23.5, 15.5, C.rockDark);
+    img.ellipse(24, 64, 21, 13, C.water);
+    img.ellipse(24, 66, 17, 9, "#3584c6");
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * Math.PI * 2 + (i % 2) * 0.1;
+      const x = 24 + Math.cos(a) * 21.5;
+      const y = 64 + Math.sin(a) * 14;
+      const r = 2.2 + ((i * 7) % 3) * 0.6;
+      img.ellipse(x, y, r + 0.8, r * 0.75 + 0.8, C.outline);
+      img.ellipse(x, y, r, r * 0.75, i % 3 === 0 ? C.rockLight : C.rock);
+      img.set(Math.round(x - 1), Math.round(y - 1), C.rockLight);
+    }
+    // ondinhas que se abrem a partir da queda
+    for (const k of [0, 1]) {
+      const r = 5 + ((f + k * 1.5) % 3) * 4;
+      for (let a = 0.15; a < Math.PI - 0.15; a += 0.12) img.set(Math.round(24 + Math.cos(a) * r * 1.4), Math.round(60 + Math.sin(a) * r * 0.55), C.waterLight);
+    }
+    // pedrinhas na borda de onde a água sai
+    for (const [x, y] of [
+      [14, 3],
+      [34, 3],
+      [12, 6],
+    ]) {
+      img.ellipse(x, y, 2.6, 2, C.rock);
+      img.set(x - 1, y - 1, C.rockLight);
+    }
+    // a queda, um pouco mais larga embaixo
+    for (let y = 0; y < 58; y++) {
+      const half = 7 + Math.round((y / 58) * 2);
+      img.hline(24 - half, 23 + half, y, C.water);
+      img.set(24 - half, y, C.waterDark).set(23 + half, y, C.waterDark);
+    }
+    for (let x = 17; x < 31; x += 3) {
+      for (let y = 4 + ((f * 5 + x * 7) % 15); y < 56; y += 15) img.vline(x, y, y + 5, C.waterLight);
+    }
+    img.hline(17, 30, 0, C.foam).hline(18, 29, 1, C.waterLight);
+    img.outline(C.outline);
+    // espuma e névoa (depois do contorno, para ficarem leves)
+    img.ellipse(24, 58, 11, 4, C.foam);
+    for (let i = 0; i < 46; i++) {
+      const a = rand() * Math.PI * 2;
+      const r = 6 + rand() * 9;
+      const x = Math.round(24 + Math.cos(a) * r * 1.3);
+      const y = Math.round(56 + Math.sin(a) * r * 0.5 - 2);
+      if (y < 63) img.set(x, y, rand() < 0.5 ? C.foam : "#ffffff90");
+    }
+    return img;
+  });
+  return { img: sheet(frames, 3), frame: { w: 48, h: 80 } };
+}
+
+/**
+ * Boca da caverna 48x48, escavada no paredão: arco de pedra sem contorno
+ * por fora (emenda na rocha), escuridão em degradê, escoras de madeira,
+ * lanterna e entulho. A abertura ocupa x 16–31, alinhada à grade.
  */
 function drawCave(): Img {
   const img = new Img(48, 48);
   const rand = rng(61);
-  // pedra em volta
-  img.ellipse(24, 26, 23, 21, C.rockDark);
-  img.ellipse(22, 23, 20, 18, C.rock);
-  img.ellipse(16, 14, 9, 6, C.rockLight);
-  img.rect(1, 30, 46, 17, C.rockDark);
-  img.rect(2, 30, 30, 15, C.rock);
-  for (let i = 0; i < 120; i++) {
-    const x = Math.floor(rand() * 48);
-    const y = Math.floor(rand() * 48);
-    if (img.alpha(x, y) > 0) img.set(x, y, rand() < 0.5 ? C.rockDark : C.rockLight);
+  // arco de pedra em volta da boca (vai se misturar com a face do paredão)
+  img.ellipse(24, 26, 15, 13, C.rockFace);
+  img.rect(9, 26, 30, 22, C.rockFace);
+  for (let i = 0; i < 70; i++) {
+    const a = Math.PI + rand() * Math.PI;
+    const r = 9 + rand() * 6;
+    img.set(Math.round(24 + Math.cos(a) * r), Math.round(26 + Math.sin(a) * r * 0.95), rand() < 0.5 ? C.rock : C.rockLight);
   }
-  // boca
-  img.rect(16, 26, 16, 21, C.black);
-  img.ellipse(24, 26, 8, 7, C.black);
-  img.ellipse(24, 27, 6, 5, "#0e0f18");
-  img.rect(18, 27, 12, 20, "#0e0f18");
+  for (let y = 26; y < 47; y++) {
+    if (rand() < 0.5) img.set(10 + Math.floor(rand() * 4), y, C.rock);
+    if (rand() < 0.5) img.set(34 + Math.floor(rand() * 4), y, C.rockDark);
+  }
+  // escuridão
+  img.ellipse(24, 26, 9, 9, C.outline);
+  img.rect(15, 26, 18, 22, C.outline);
+  img.ellipse(24, 27, 8, 8, C.black);
+  img.rect(16, 27, 16, 21, C.black);
+  img.ellipse(24, 30, 5, 5, "#0b0c14");
+  img.rect(19, 30, 10, 18, "#0b0c14");
   // escoras de madeira
-  img.rect(15, 24, 3, 23, C.wood).vline(15, 24, 46, C.woodDark);
-  img.rect(30, 24, 3, 23, C.wood).vline(32, 24, 46, C.woodDark);
-  img.rect(13, 21, 22, 4, C.wood).hline(13, 34, 21, C.woodLight).hline(13, 34, 24, C.woodDark);
-  // lanterna
-  img.vline(36, 22, 25, C.slate);
-  img.rect(35, 26, 4, 5, C.yellow).frame(35, 26, 4, 5, C.outline);
-  img.set(36, 27, C.paper);
-  // capim na base
-  for (const x of [4, 7, 39, 43]) img.vline(x, 44, 46, C.grassDark).set(x + 1, 45, C.grass);
-  return img.outline(C.outline);
+  img.rect(14, 22, 3, 26, C.wood).vline(14, 22, 47, C.woodDark).vline(16, 22, 47, C.woodLight);
+  img.rect(31, 22, 3, 26, C.wood).vline(33, 22, 47, C.woodDark).vline(31, 22, 47, C.woodLight);
+  img.rect(12, 19, 24, 4, C.wood).hline(12, 35, 19, C.woodLight).hline(12, 35, 22, C.woodDark);
+  img.set(15, 20, C.outline).set(32, 20, C.outline);
+  // lanterna pendurada
+  img.vline(37, 21, 24, C.slate);
+  img.rect(36, 25, 4, 5, C.yellow).frame(36, 25, 4, 5, C.outline);
+  img.set(37, 26, C.paper);
+  // entulho e tábua na base
+  for (const [x, y, r] of [
+    [8, 45, 2.5],
+    [11, 46, 1.8],
+    [38, 45, 2.2],
+    [41, 46, 2.6],
+  ] as const) {
+    img.ellipse(x, y, r + 0.8, r * 0.7 + 0.8, C.outline);
+    img.ellipse(x, y, r, r * 0.7, C.rock);
+    img.set(x - 1, y - 1, C.rockLight);
+  }
+  img.line(18, 46, 27, 44, C.woodLight).line(18, 47, 27, 45, C.wood);
+  return img;
 }
 
-/** Farol 32x80, 2 quadros: a luz acende e solta raios. */
+/**
+ * Farol grande — torre de 48x128 num quadro de 112px (espaço para o feixe),
+ * 4 quadros: feixe à esquerda, apagado, feixe à direita, apagado.
+ * Base octogonal de pedra com porta e degraus, torre afunilada listrada,
+ * varanda com grade, sala da lanterna envidraçada e cúpula com cata-vento.
+ */
 function drawLighthouse(): SpriteOut {
-  const frames = [false, true].map((on) => {
-    const img = new Img(32, 80);
-    // base de pedra
-    img.rect(5, 70, 22, 9, C.stoneMid);
-    img.hline(5, 26, 70, C.stone);
-    for (const x of [9, 15, 21]) img.vline(x, 71, 78, C.stoneDark);
-    img.hline(5, 26, 74, C.stoneDark);
-    // torre afunilada com listras vermelhas e brancas
-    for (let y = 26; y < 70; y++) {
-      const t = (y - 26) / 44;
-      const half = Math.round(6 + 4 * t);
-      const red = Math.floor((y - 26) / 8) % 2 === 0;
-      img.hline(16 - half, 15 + half, y, red ? C.red : C.white);
-      img.hline(16 + half - 2, 15 + half, y, red ? "#8f3526" : C.stone);
-      img.set(16 - half, y, red ? C.redLight : C.white);
-    }
-    // janelinhas e porta
-    img.rect(14, 38, 4, 5, C.blue).frame(14, 38, 4, 5, C.outline);
-    img.rect(14, 54, 4, 5, C.blue).frame(14, 54, 4, 5, C.outline);
-    img.rect(12, 62, 8, 8, C.woodDark);
-    img.circle(16, 62, 4, C.woodDark);
-    img.rect(13, 62, 6, 8, C.wood);
-    img.circle(16, 62, 3, C.wood);
-    img.set(17, 66, C.yellow);
-    // varanda
-    img.rect(6, 23, 20, 3, C.slate);
-    img.hline(6, 25, 23, C.stoneMid);
-    for (let x = 7; x < 26; x += 3) img.vline(x, 19, 22, C.slate);
-    img.hline(6, 25, 19, C.slate);
-    // sala da lanterna
-    img.rect(10, 12, 12, 8, on ? C.yellow : "#c99a3a");
-    img.rect(12, 13, 8, 6, on ? C.paper : C.yellow);
-    img.vline(13, 12, 19, C.slate).vline(18, 12, 19, C.slate);
-    // cúpula
-    img.ellipse(16, 11, 7, 4, C.red);
-    img.rect(9, 10, 14, 2, "#8f3526");
-    img.ellipse(15, 9, 3, 1.5, C.redLight);
-    img.vline(16, 3, 7, C.slate).set(16, 2, C.yellow);
-    img.outline(C.outline);
-    if (on) {
-      // raios de luz para os lados
-      for (let x = 0; x < 9; x++) {
-        const spread = Math.floor((9 - x) / 3);
-        img.vline(x, 15 - spread, 16 + spread, "#fff4b066");
-        img.vline(31 - x, 15 - spread, 16 + spread, "#fff4b066");
+  const W = 112;
+  const H = 128;
+  const cx = 56;
+  const frames = [-1, 0, 1, 0].map((beam, f) => {
+    const img = new Img(W, H);
+    const lit = beam !== 0;
+    // base octogonal de pedra
+    img.rect(cx - 26, 112, 52, 14, C.stoneMid);
+    img.rect(cx - 22, 108, 44, 4, C.stoneMid);
+    img.rect(cx - 22, 108, 44, 2, C.stone);
+    img.rect(cx - 26, 112, 52, 3, C.stone);
+    for (let x = cx - 24; x < cx + 26; x += 8) img.vline(x, 116, 125, C.stoneDark);
+    img.hline(cx - 26, cx + 25, 120, C.stoneDark);
+    img.vline(cx + 25, 112, 125, C.slate);
+    // degraus
+    img.rect(cx - 8, 122, 16, 2, C.stone).rect(cx - 10, 124, 20, 3, C.stone);
+    img.hline(cx - 10, cx + 9, 126, C.stoneDark);
+    // torre afunilada com faixas
+    for (let y = 40; y < 112; y++) {
+      const t = (y - 40) / 72;
+      const half = Math.round(13 + 7 * t);
+      const red = Math.floor((y - 40) / 12) % 2 === 0;
+      for (let x = cx - half; x < cx + half; x++) {
+        const u = (x - (cx - half)) / (2 * half);
+        const base = red ? (u < 0.25 ? C.redLight : u < 0.8 ? C.red : "#8f3526") : u < 0.25 ? C.white : u < 0.8 ? C.paper : C.stone;
+        img.set(x, y, base);
       }
     }
-    return img.shadow(16, 78, 12, 1.5);
+    // janelas e porta
+    for (const [x, y] of [
+      [cx - 3, 54],
+      [cx + 2, 78],
+      [cx - 4, 96],
+    ]) {
+      img.rect(x, y, 5, 7, C.slate);
+      img.rect(x + 1, y + 1, 3, 5, lit ? C.yellow : C.blue);
+    }
+    img.rect(cx - 6, 98, 12, 14, C.woodDark);
+    img.circle(cx, 98, 6, C.woodDark);
+    img.rect(cx - 5, 98, 10, 14, C.wood);
+    img.circle(cx, 98, 5, C.wood);
+    img.vline(cx, 93, 111, C.woodDark);
+    img.set(cx + 2, 104, C.yellow);
+    // varanda com grade
+    img.rect(cx - 22, 36, 44, 5, C.slate);
+    img.hline(cx - 22, cx + 21, 36, C.stoneMid);
+    img.hline(cx - 22, cx + 21, 40, C.ink);
+    img.hline(cx - 22, cx + 21, 28, C.slate);
+    for (let x = cx - 22; x < cx + 22; x += 4) img.vline(x, 28, 35, C.slate);
+    // sala da lanterna envidraçada
+    img.rect(cx - 12, 14, 24, 22, C.slate);
+    img.rect(cx - 10, 16, 20, 19, lit ? C.yellow : "#c99a3a");
+    img.rect(cx - 6, 18, 12, 15, lit ? C.paper : C.yellow);
+    for (const x of [cx - 4, cx + 3]) img.vline(x, 16, 34, C.slate);
+    // cúpula e cata-vento
+    img.ellipse(cx, 13, 14, 7, C.red);
+    img.rect(cx - 14, 12, 28, 3, "#8f3526");
+    img.ellipse(cx - 4, 10, 5, 2.5, C.redLight);
+    img.circle(cx, 5, 2, C.yellow);
+    img.vline(cx, 0, 4, C.slate).hline(cx - 3, cx + 3, 1, C.slate).set(cx + 3, 2, C.slate);
+    img.outline(C.outline);
+    // feixe girando
+    if (beam !== 0) {
+      for (let k = 0; k < 44; k++) {
+        const x = beam < 0 ? cx - 14 - k : cx + 13 + k;
+        const spread = Math.floor(k / 4);
+        img.vline(x, 25 - spread, 26 + spread, k < 6 ? "#fff4b0b0" : "#fff4b066");
+      }
+    }
+    if (f === 0) img.set(cx, 25, C.white);
+    return img.shadow(cx, 125, 30, 2);
   });
-  return { img: sheet(frames, 2), frame: { w: 32, h: 80 } };
+  return { img: sheet(frames, 4), frame: { w: W, h: H } };
+}
+
+/** Rocha no mar: pedra molhada embaixo e anel de espuma em volta. */
+function drawSeaRock(w: number, h: number, seed: number): Img {
+  const img = new Img(w, h);
+  const rand = rng(seed);
+  const cx = w / 2;
+  const cy = h - 7;
+  img.ellipse(cx, cy, w / 2 - 3, h / 2 - 3, C.rockDark);
+  img.ellipse(cx - 1, cy - 2, w / 2 - 5, h / 2 - 5, C.rock);
+  img.ellipse(cx - 3, cy - 4, w / 5, h / 7, C.rockLight);
+  for (let i = 0; i < (w * h) / 20; i++) {
+    const x = Math.floor(rand() * w);
+    const y = Math.floor(rand() * h);
+    if (img.alpha(x, y) > 0 && y < cy) img.set(x, y, rand() < 0.5 ? C.rockDark : C.rockLight);
+  }
+  // parte molhada
+  for (let y = cy; y < h; y++) for (let x = 0; x < w; x++) if (img.alpha(x, y) > 0) img.set(x, y, y > cy + 2 ? "#4a4458" : C.rockFace);
+  img.outline(C.outline);
+  // espuma em volta da base
+  for (let a = 0; a < Math.PI * 2; a += 0.09) {
+    const x = Math.round(cx + Math.cos(a) * (w / 2 - 1));
+    const y = Math.round(cy + 2 + Math.sin(a) * 3);
+    if (img.alpha(x, y) === 0) img.set(x, y, Math.sin(a) > 0 ? C.foam : C.waterLight);
+  }
+  return img;
+}
+
+/** Estaca de madeira saindo da água, com ondinha em volta. */
+function drawPiling(): Img {
+  const img = new Img(16, 16);
+  img.ellipse(8, 13, 6, 2, C.waterLight);
+  img.ellipse(8, 13, 4, 1.2, C.sea);
+  img.rect(6, 3, 5, 10, C.wood);
+  img.vline(10, 3, 12, C.woodDark).vline(6, 3, 12, C.woodLight);
+  img.ellipse(8, 3, 2.5, 1, C.woodLight);
+  img.hline(6, 10, 7, C.woodDark);
+  img.outline(C.outline);
+  img.set(3, 13, C.foam).set(13, 13, C.foam);
+  return img;
 }
 
 /** Barquinho a remo encalhado na areia, 32x20. */
@@ -371,9 +622,15 @@ export function drawLandscape(): Record<string, SpriteOut> {
     "mountain-low-b": drawMountain(64, 48, 81, [{ x: 38, y: 8, slope: 1.05 }, { x: 16, y: 20, slope: 1 }], 0),
     boulder: drawBoulder(83),
     "rock-small": drawRockSmall(),
+    "foothill-a": drawFoothill(48, 32, 101),
+    "foothill-b": drawFoothill(64, 40, 103),
+    "cliff-wall": drawCliffWall(),
     waterfall: drawWaterfall(),
     "cave-entrance": drawCave(),
     lighthouse: drawLighthouse(),
+    "sea-rock": drawSeaRock(32, 24, 107),
+    "sea-rock-b": drawSeaRock(24, 20, 109),
+    piling: drawPiling(),
     boat: drawBoat(),
     "beach-umbrella": drawUmbrella(),
     "beach-towel": drawTowel(),

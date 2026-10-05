@@ -37,8 +37,8 @@ const OTHER_TILES = [
   "wall_school_bottom",
   "void",
   "exit_mat",
-  "pier",
-  "pier_end",
+  "pier_l",
+  "pier_r",
 ] as const;
 
 export type CustomTile = `${EdgedTile}_${EdgePart}` | (typeof OTHER_TILES)[number];

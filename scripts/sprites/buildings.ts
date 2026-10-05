@@ -77,12 +77,14 @@ function curtainPanel(img: Img, x: number, y: number, w: number, h: number, phas
 }
 
 /**
- * Torre da Catsuc — 128x144, 3 andares: térreo com porta automática e
- * marquise azul, dois andares de vidro separados por faixas na cor da
- * marca e o letreiro com a logo no topo. A porta fica em x 56–71.
+ * Prédio da Catsuc — 128x112, 2 andares: térreo com porta automática e
+ * marquise azul, um andar de vidro com faixa na cor da marca e o
+ * letreiro com a logo no topo. A porta fica em x 56–71.
  */
 export function drawCatsuc(): Img {
-  const img = new Img(128, 144);
+  const H = 112;
+  const GF = H - 39; // topo do térreo
+  const img = new Img(128, H);
   const L = 3;
   const R = 124;
 
@@ -103,7 +105,7 @@ export function drawCatsuc(): Img {
   img.vline(R - 10, 8, 24, C.slate).hline(R - 13, R - 7, 12, C.slate).set(R - 10, 7, C.redLight);
   img.hline(L, R, 31, C.stoneDark);
 
-  // andares de vidro (2º e 3º), separados por faixas azuis
+  // andar de vidro e faixa azul
   const mullions = [L, 18, 33, 48, 63, 64, 79, 94, 109, R];
   const floor = (top: number, bottom: number, phase: number) => {
     img.rect(L, top, R - L + 1, bottom - top, C.stone);
@@ -114,35 +116,33 @@ export function drawCatsuc(): Img {
       curtainPanel(img, x0 + 1, top + 2, x1 - x0 - 1, bottom - top - 4, phase + i * 5);
     }
   };
-  floor(32, 64, 0);
-  img.rect(L, 64, R - L + 1, 5, C.catsuc).hline(L, R, 64, C.catsucLight).hline(L, R, 68, C.catsucDark);
-  floor(69, 100, 9);
-  img.rect(L, 100, R - L + 1, 5, C.catsuc).hline(L, R, 100, C.catsucLight).hline(L, R, 104, C.catsucDark);
+  floor(32, GF - 5, 0);
+  img.rect(L, GF - 5, R - L + 1, 5, C.catsuc).hline(L, R, GF - 5, C.catsucLight).hline(L, R, GF - 1, C.catsucDark);
 
   // térreo: parede clara, vitrines e a porta automática
-  img.rect(L, 105, R - L + 1, 38, C.stone);
-  img.hline(L, R, 105, C.white);
+  img.rect(L, GF, R - L + 1, 38, C.stone);
+  img.hline(L, R, GF, C.white);
   for (const x of [8, 28, 84, 104]) {
-    curtainPanel(img, x, 112, 16, 24, x);
-    img.frame(x - 1, 111, 18, 26, C.stoneDark);
+    curtainPanel(img, x, GF + 7, 16, 24, x);
+    img.frame(x - 1, GF + 6, 18, 26, C.stoneDark);
   }
   // marquise
-  img.rect(48, 106, 32, 6, C.catsuc);
-  img.hline(48, 79, 106, C.catsucLight).hline(48, 79, 111, C.catsucDark);
-  drawCatsucIcon(img, 59, 107, C.white, true);
+  img.rect(48, GF + 1, 32, 6, C.catsuc);
+  img.hline(48, 79, GF + 1, C.catsucLight).hline(48, 79, GF + 6, C.catsucDark);
+  drawCatsucIcon(img, 59, GF + 2, C.white, true);
   // porta de vidro dupla (x 56–71)
-  img.rect(54, 112, 20, 32, C.stoneDark);
-  curtainPanel(img, 56, 114, 7, 29, 2);
-  curtainPanel(img, 65, 114, 7, 29, 6);
-  img.vline(63, 114, 143, C.slate).vline(64, 114, 143, C.slate);
-  img.rect(61, 126, 2, 4, C.stone).rect(65, 126, 2, 4, C.stone);
+  img.rect(54, GF + 7, 20, 32, C.stoneDark);
+  curtainPanel(img, 56, GF + 9, 7, 29, 2);
+  curtainPanel(img, 65, GF + 9, 7, 29, 6);
+  img.vline(63, GF + 9, H - 1, C.slate).vline(64, GF + 9, H - 1, C.slate);
+  img.rect(61, GF + 21, 2, 4, C.stone).rect(65, GF + 21, 2, 4, C.stone);
   // volume: lateral direita na sombra
-  img.vline(R, 24, 143, C.stoneDark).vline(R - 1, 32, 143, "#00000030");
+  img.vline(R, 24, H - 1, C.stoneDark).vline(R - 1, 32, H - 1, "#00000030");
   // calçada e plantas
-  img.rect(L, 141, R - L + 1, 3, C.stoneMid);
-  img.rect(50, 141, 28, 3, C.stone);
-  pottedPlant(img, 44, 131);
-  pottedPlant(img, 78, 131);
+  img.rect(L, H - 3, R - L + 1, 3, C.stoneMid);
+  img.rect(50, H - 3, 28, 3, C.stone);
+  pottedPlant(img, 44, GF + 26);
+  pottedPlant(img, 78, GF + 26);
   return img.outline(C.outline);
 }
 
